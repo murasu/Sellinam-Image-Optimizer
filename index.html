@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            display: block;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .preview-container {
+            margin-top: 30px;
+            display: none;
+        }
+        .preview-container.active {
+            display: block;
+        }
+        .image-preview {
+            max-width: 100%;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #previewImage, #resultImage {
+            max-width: 100%;
+            display: block;
+        }
+        .download-btn {
+            background-color: #27ae60;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .download-btn:hover {
+            background-color: #2ecc71;
+        }
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading.active {
+            display: block;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-right: 5px;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: #f8f9fa;
+            border-color: #ddd;
+            border-bottom: 1px solid #f8f9fa;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Processor</h1>
+        <p>Upload an image to trim it to specific dimensions and optimize for screen display. All processing happens in your browser - no files are uploaded to any server.</p>
+        
+        <div class="tabs">
+            <div class="tab active" id="uploadTab">Upload</div>
+            <div class="tab" id="processTab">Process</div>
+            <div class="tab" id="downloadTab">Download</div>
+        </div>
+        
+        <div id="errorMessage" class="message error" style="display: none;"></div>
+        
+        <div id="uploadSection">
+            <div class="form-group">
+                <label for="imageInput">Select image to process:</label>
+                <input type="file" id="imageInput" accept="image/*">
+            </div>
+            
+            <button id="nextToProcess">Next</button>
+        </div>
+        
+        <div id="processSection" style="display: none;">
+            <div class="form-group">
+                <label for="width">Target Width (pixels):</label>
+                <input type="number" id="width" value="800" min="1" max="10000">
+            </div>
+            
+            <div class="form-group">
+                <label for="height">Target Height (pixels):</label>
+                <input type="number" id="height" value="600" min="1" max="10000">
+            </div>
+            
+            <div class="form-group">
+                <label for="dpi">Target Resolution (DPI/PPI):</label>
+                <input type="number" id="dpi" value="72" min="1" max="600">
+            </div>
+            
+            <div class="preview-container active">
+                <h3>Original Image Preview</h3>
+                <div class="image-preview">
+                    <img id="previewImage" src="#" alt="Preview">
+                </div>
+                <p>Original dimensions: <span id="originalDimensions"></span></p>
+            </div>
+            
+            <button id="processButton">Process Image</button>
+        </div>
+        
+        <div id="downloadSection" style="display: none;">
+            <div class="preview-container active">
+                <h3>Processed Image</h3>
+                <div class="image-preview">
+                    <img id="resultImage" src="#" alt="Result">
+                </div>
+                <p>New dimensions: <span id="newDimensions"></span></p>
+            </div>
+            
+            <a id="downloadLink" class="download-btn" download="processed_image.png">Download Processed Image</a>
+            <button id="startOver" style="margin-top: 15px;">Process Another Image</button>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processing image...</p>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const imageInput = document.getElementById('imageInput');
+        const widthInput = document.getElementById('width');
+        const heightInput = document.getElementById('height');
+        const dpiInput = document.getElementById('dpi');
+        const previewImage = document.getElementById('previewImage');
+        const resultImage = document.getElementById('resultImage');
+        const originalDimensions = document.getElementById('originalDimensions');
+        const newDimensions = document.getElementById('newDimensions');
+        const processButton = document.getElementById('processButton');
+        const downloadLink = document.getElementById('downloadLink');
+        const errorMessage = document.getElementById('errorMessage');
+        const loading = document.getElementById('loading');
+        const startOver = document.getElementById('startOver');
+        
+        // Tab elements
+        const uploadTab = document.getElementById('uploadTab');
+        const processTab = document.getElementById('processTab');
+        const downloadTab = document.getElementById('downloadTab');
+        const uploadSection = document.getElementById('uploadSection');
+        const processSection = document.getElementById('processSection');
+        const downloadSection = document.getElementById('downloadSection');
+        const nextToProcess = document.getElementById('nextToProcess');
+        
+        // Global variables
+        let originalImage = null;
+        
+        // Event listeners
+        imageInput.addEventListener('change', handleImageSelect);
+        processButton.addEventListener('click', processImage);
+        startOver.addEventListener('click', resetApp);
+        nextToProcess.addEventListener('click', () => {
+            if (!originalImage) {
+                showError('Please select an image first.');
+                return;
+            }
+            showTab('process');
+        });
+        
+        // Tab navigation
+        uploadTab.addEventListener('click', () => showTab('upload'));
+        processTab.addEventListener('click', () => {
+            if (originalImage) showTab('process');
+        });
+        downloadTab.addEventListener('click', () => {
+            if (downloadLink.href && downloadLink.href !== window.location.href) {
+                showTab('download');
+            }
+        });
+        
+        function showTab(tabName) {
+            // Hide all sections
+            uploadSection.style.display = 'none';
+            processSection.style.display = 'none';
+            downloadSection.style.display = 'none';
+            
+            // Remove active class from all tabs
+            uploadTab.classList.remove('active');
+            processTab.classList.remove('active');
+            downloadTab.classList.remove('active');
+            
+            // Show selected section and activate tab
+            if (tabName === 'upload') {
+                uploadSection.style.display = 'block';
+                uploadTab.classList.add('active');
+            } else if (tabName === 'process') {
+                processSection.style.display = 'block';
+                processTab.classList.add('active');
+            } else if (tabName === 'download') {
+                downloadSection.style.display = 'block';
+                downloadTab.classList.add('active');
+            }
+        }
+        
+        function handleImageSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Check file type
+            if (!file.type.match('image.*')) {
+                showError('Please select an image file (JPEG, PNG, GIF, etc.)');
+                return;
+            }
+            
+            // Check file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showError('File is too large. Maximum size is 10MB.');
+                return;
+            }
+            
+            hideError();
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    originalImage = img;
+                    previewImage.src = img.src;
+                    originalDimensions.textContent = `${img.width} × ${img.height} pixels`;
+                    
+                    // Suggest dimensions based on original aspect ratio
+                    const aspectRatio = img.width / img.height;
+                    widthInput.value = 800;
+                    heightInput.value = Math.round(800 / aspectRatio);
+                    
+                    nextToProcess.disabled = false;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function processImage() {
+            if (!originalImage) {
+                showError('Please select an image first.');
+                return;
+            }
+            
+            hideError();
+            loading.classList.add('active');
+            
+            // Get desired dimensions and DPI
+            const targetWidth = parseInt(widthInput.value, 10) || 800;
+            const targetHeight = parseInt(heightInput.value, 10) || 600;
+            const targetDPI = parseInt(dpiInput.value, 10) || 72;
+            
+            // Create a canvas for processing
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw the image with the new dimensions
+            ctx.drawImage(originalImage, 0, 0, targetWidth, targetHeight);
+            
+            // Create a new image with the processed canvas
+            const processedImage = new Image();
+            processedImage.onload = function() {
+                resultImage.src = processedImage.src;
+                newDimensions.textContent = `${targetWidth} × ${targetHeight} pixels at ${targetDPI} DPI`;
+                
+                // Set download link
+                downloadLink.href = processedImage.src;
+                
+                // Get original filename
+                let fileName = "processed_image.png";
+                if (imageInput.files[0]) {
+                    const originalName = imageInput.files[0].name;
+                    const nameParts = originalName.split('.');
+                    if (nameParts.length > 1) {
+                        nameParts.pop(); // Remove extension
+                    }
+                    fileName = `${nameParts.join('.')}_${targetWidth}x${targetHeight}.png`;
+                }
+                downloadLink.setAttribute('download', fileName);
+                
+                // Show download section
+                loading.classList.remove('active');
+                showTab('download');
+            };
+            
+            // Convert canvas to data URL (PNG format for best quality)
+            processedImage.src = canvas.toDataURL('image/png');
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+        
+        function resetApp() {
+            // Reset form
+            imageInput.value = '';
+            widthInput.value = '800';
+            heightInput.value = '600';
+            dpiInput.value = '72';
+            
+            // Reset images
+            previewImage.src = '#';
+            resultImage.src = '#';
+            originalDimensions.textContent = '';
+            newDimensions.textContent = '';
+            
+            // Reset state
+            originalImage = null;
+            downloadLink.href = '';
+            
+            // Show upload section
+            showTab('upload');
+            hideError();
+        }
+        
+        // Initialize
+        resetApp();
+    </script>
+</body>
+</html>
