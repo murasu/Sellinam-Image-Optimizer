@@ -179,6 +179,13 @@
             </div>
             
             <div class="form-group">
+                <label for="lockAspectRatio">
+                    <input type="checkbox" id="lockAspectRatio" checked> 
+                    Lock aspect ratio (maintain proportions)
+                </label>
+            </div>
+            
+            <div class="form-group">
                 <label for="dpi">Target Resolution (DPI/PPI):</label>
                 <input type="number" id="dpi" value="72" min="1" max="600">
             </div>
@@ -240,6 +247,7 @@
         
         // Global variables
         let originalImage = null;
+        let originalAspectRatio = 1;
         
         // Event listeners
         imageInput.addEventListener('change', handleImageSelect);
@@ -252,6 +260,11 @@
             }
             showTab('process');
         });
+        
+        // Add event listeners for maintaining aspect ratio
+        const lockAspectRatio = document.getElementById('lockAspectRatio');
+        widthInput.addEventListener('input', updateHeightBasedOnAspectRatio);
+        heightInput.addEventListener('input', updateWidthBasedOnAspectRatio);
         
         // Tab navigation
         uploadTab.addEventListener('click', () => showTab('upload'));
@@ -315,9 +328,9 @@
                     originalDimensions.textContent = `${img.width} × ${img.height} pixels`;
                     
                     // Suggest dimensions based on original aspect ratio
-                    const aspectRatio = img.width / img.height;
+                    originalAspectRatio = img.width / img.height;
                     widthInput.value = 800;
-                    heightInput.value = Math.round(800 / aspectRatio);
+                    heightInput.value = Math.round(800 / originalAspectRatio);
                     
                     nextToProcess.disabled = false;
                 };
@@ -388,6 +401,21 @@
             errorMessage.style.display = 'none';
         }
         
+        // Functions to maintain aspect ratio
+        function updateHeightBasedOnAspectRatio() {
+            if (lockAspectRatio.checked && originalImage) {
+                const newWidth = parseInt(widthInput.value, 10) || 0;
+                heightInput.value = Math.round(newWidth / originalAspectRatio);
+            }
+        }
+        
+        function updateWidthBasedOnAspectRatio() {
+            if (lockAspectRatio.checked && originalImage) {
+                const newHeight = parseInt(heightInput.value, 10) || 0;
+                widthInput.value = Math.round(newHeight * originalAspectRatio);
+            }
+        }
+        
         function resetApp() {
             // Reset form
             imageInput.value = '';
@@ -403,6 +431,7 @@
             
             // Reset state
             originalImage = null;
+            originalAspectRatio = 1;
             downloadLink.href = '';
             
             // Show upload section
